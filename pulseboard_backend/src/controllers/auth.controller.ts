@@ -4,12 +4,10 @@ import bcrypt from "bcryptjs";
 import { getGoogleUser } from "../services/googleOAuth.service.ts";
 import jwt from "jsonwebtoken";
 
-// --- 1. LOCAL REGISTRATION (For your Register Screen) ---
+// LOCAL REGISTRATION
 export const register = async (req: Request, res: Response) => {
   try {
     const { name, email, password } = req.body;
-
-    console.log(name)
 
     if (!name || !email || !password) {
       return res.status(400).json({ message: "Missing fields" });
@@ -26,7 +24,7 @@ export const register = async (req: Request, res: Response) => {
       name,
       email,
       password: hashedPassword,
-      provider: "local", // Mark as local user
+      provider: "local",
     });
 
     return res.status(201).json({ message: "User created" });
@@ -36,7 +34,7 @@ export const register = async (req: Request, res: Response) => {
   }
 };
 
-// --- 2. GOOGLE OAUTH CALLBACK (Restored) ---
+// Google Callback
 export const googleCallback = async (req: Request, res: Response) => {
   try {
     const { code } = req.body;
@@ -73,8 +71,7 @@ export const googleCallback = async (req: Request, res: Response) => {
   }
 };
 
-// ... existing imports
-// Add this new login function
+// LOGIN
 export const login = async (req: Request, res: Response) => {
   try {
     const { email, password } = req.body;
@@ -116,5 +113,3 @@ export const login = async (req: Request, res: Response) => {
     res.status(500).json({ message: "Server error" });
   }
 };
-
-// ... keep your register and googleCallback functions here

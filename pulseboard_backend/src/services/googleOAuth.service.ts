@@ -1,7 +1,7 @@
 import { getGoogleClient } from "../utils/googleClient.ts";
 
 export const getGoogleUser = async (code: string) => {
-  const client = getGoogleClient(); // Create the client here, inside the function
+  const client = getGoogleClient();
 
   const { tokens } = await client.getToken(code);
 

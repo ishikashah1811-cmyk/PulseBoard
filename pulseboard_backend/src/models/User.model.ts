@@ -38,6 +38,7 @@ const UserSchema: Schema = new Schema(
 
     password: {
       type: String,
+      select: false,
       required: function (this: any) {
         return this.provider === "local";
       },
