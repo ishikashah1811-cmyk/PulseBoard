@@ -1,15 +1,9 @@
 import { getGoogleClient } from "../utils/googleClient.ts";
 
 export const getGoogleUser = async (code: string) => {
-  const client = getGoogleClient();
+  const client = getGoogleClient(); // Create the client here, inside the function
 
-  // --- THE FIX IS HERE ---
-  const { tokens } = await client.getToken({
-    code,
-    // You MUST include this line, and it MUST match the frontend URL exactly.
-    redirect_uri: 'https://auth.expo.io/@krishthevaelrion/pulseboard_mobile' 
-  });
-  // -----------------------
+  const { tokens } = await client.getToken(code);
 
   client.setCredentials(tokens);
 
