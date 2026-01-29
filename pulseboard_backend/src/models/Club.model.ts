@@ -5,7 +5,7 @@ export interface IClub extends Document {
   name: string;
   description: string;
   category: "Technical" | "Cultural" | "Literary" | "Other";
-  followers: number[];
+  followers: number;
 }
 
 const ClubSchema: Schema = new Schema(
@@ -13,7 +13,8 @@ const ClubSchema: Schema = new Schema(
     clubId: {
       type: Number,
       unique: true,
-      required: true
+      required: true,
+      index: true
     },
     name: {
       type: String,
@@ -30,11 +31,11 @@ const ClubSchema: Schema = new Schema(
       enum: ["Technical", "Cultural", "Literary", "Other"],
       required: true,
     },
-    followers: [
+    followers:
       {
         type: Number,
+        default: 0,
       },
-    ],
   },
   { timestamps: true }
 );

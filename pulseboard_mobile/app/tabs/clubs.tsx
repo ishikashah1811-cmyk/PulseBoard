@@ -35,21 +35,21 @@ export default function ClubsScreen() {
 
   // DATA: Manual IDs 1-15
   const clubs = [
-    { id: 1, name: 'Quant Club', icon: '📈', category: 'Technical', followers: '450', description: 'Algorithmic Trading & Finance' },
-    { id: 2, name: 'Devlup Labs', icon: '💻', category: 'Technical', followers: '1.2K', description: 'Open Source Development' },
-    { id: 3, name: 'RAID', icon: '🤖', category: 'Technical', followers: '890', description: 'AI & Deep Learning' },
-    { id: 4, name: 'Inside', icon: '👾', category: 'Technical', followers: '620', description: 'Game Development Society' },
-    { id: 5, name: 'Product Club', icon: '📱', category: 'Technical', followers: '340', description: 'Product Design & Mgmt' },
-    { id: 6, name: 'PSOC', icon: '⌨️', category: 'Technical', followers: '1.1K', description: 'Competitive Programming' },
-    { id: 7, name: 'TGT', icon: '🎸', category: 'Cultural', followers: '950', description: 'The Groove Theory (Music)' },
-    { id: 8, name: 'Shutterbugs', icon: '📸', category: 'Cultural', followers: '780', description: 'Photography Society' },
-    { id: 9, name: 'Ateliers', icon: '🎨', category: 'Cultural', followers: '560', description: 'Fine Arts & Crafts' },
-    { id: 10, name: 'FrameX', icon: '🎬', category: 'Cultural', followers: '820', description: 'Filmmaking & Editing' },
-    { id: 11, name: 'Designerds', icon: '📐', category: 'Cultural', followers: '910', description: 'UI/UX & Graphic Design' },
-    { id: 12, name: 'Dramebaaz', icon: '🎭', category: 'Cultural', followers: '850', description: 'Drama & Theatrics' },
-    { id: 13, name: 'E-Cell', icon: '💼', category: 'Other', followers: '1.5K', description: 'Entrepreneurship Cell' },
-    { id: 14, name: 'Nexus', icon: '💡', category: 'Other', followers: '670', description: 'Innovation & Ideas' },
-    { id: 15, name: 'Respawn', icon: '🎮', category: 'Other', followers: '2.1K', description: 'eSports & Gaming' },
+    { id: 1, name: 'Quant Club', icon: '📈', category: 'Technical', description: 'Algorithmic Trading & Finance' },
+    { id: 2, name: 'Devlup Labs', icon: '💻', category: 'Technical', description: 'Open Source Development' },
+    { id: 3, name: 'RAID', icon: '🤖', category: 'Technical', description: 'AI & Deep Learning' },
+    { id: 4, name: 'Inside', icon: '👾', category: 'Technical', description: 'Game Development Society' },
+    { id: 5, name: 'Product Club', icon: '📱', category: 'Technical', description: 'Product Design & Mgmt' },
+    { id: 6, name: 'PSOC', icon: '⌨️', category: 'Technical', description: 'Competitive Programming' },
+    { id: 7, name: 'TGT', icon: '🎸', category: 'Cultural', description: 'The Groove Theory (Music)' },
+    { id: 8, name: 'Shutterbugs', icon: '📸', category: 'Cultural', description: 'Photography Society' },
+    { id: 9, name: 'Ateliers', icon: '🎨', category: 'Cultural', description: 'Fine Arts & Crafts' },
+    { id: 10, name: 'FrameX', icon: '🎬', category: 'Cultural', description: 'Filmmaking & Editing' },
+    { id: 11, name: 'Designerds', icon: '📐', category: 'Cultural', description: 'UI/UX & Graphic Design' },
+    { id: 12, name: 'Dramebaaz', icon: '🎭', category: 'Cultural', description: 'Drama & Theatrics' },
+    { id: 13, name: 'E-Cell', icon: '💼', category: 'Other', description: 'Entrepreneurship Cell' },
+    { id: 14, name: 'Nexus', icon: '💡', category: 'Other', description: 'Innovation & Ideas' },
+    { id: 15, name: 'Respawn', icon: '🎮', category: 'Other', description: 'eSports & Gaming' },
   ];
 
   const categories = ['all', 'Technical', 'Cultural', 'Other'];
