@@ -1,15 +1,16 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useCallback } from 'react';
 import { 
   View, Text, ScrollView, TouchableOpacity, 
   SafeAreaView, StatusBar, Modal, ActivityIndicator 
 } from 'react-native';
 import { 
-  Menu, Calendar, PlayCircle, MapPin, LogOut 
+  Menu, Calendar, PlayCircle, MapPin, LogOut, 
+  User
 } from 'lucide-react-native';
-import { router } from 'expo-router';
+import { router, useFocusEffect } from 'expo-router'; // <--- NEW IMPORT
 // Import BOTH APIs
 import { getEventFeed } from '../../src/api/event.api'; 
-import { getUserProfile } from '../../src/api/user.api'; // <--- New Import
+import { getUserProfile } from '../../src/api/user.api';
 
 const THEME_ACCENT = '#CCF900'; 
 
@@ -37,19 +38,25 @@ export default function HomeScreen() {
   const [events, setEvents] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // --- REAL USER STATE ---
-  const [user, setUser] = useState<{ name: string; interests: number[] }>({
-    name: "Loading...",
-    interests: [] 
-  });
+  // --- REAL USER STATE
+const [user, setUser] = useState({
+  name: "Loading...",  // Initial placeholder name
+  following: [],       // Initial empty array
+});
 
-  useEffect(() => {
-    loadData();
-  }, []);
+  // --- THE FIX: USE FOCUS EFFECT ---
+  // This runs EVERY time you click the "Home" tab
+  useFocusEffect(
+    useCallback(() => {
+      loadData();
+    }, [])
+  );
 
   const loadData = async () => {
     try {
-      setLoading(true);
+      // Only show the big loading spinner if we have NO data yet.
+      // This prevents the screen from flashing "Loading..." every time you switch tabs.
+      if (events.length === 0) setLoading(true);
 
       // 1. Fetch User Profile AND Events in parallel
       const [userData, eventData] = await Promise.all([
@@ -57,46 +64,48 @@ export default function HomeScreen() {
         getEventFeed()
       ]);
 
-      console.log("Logged in as:", userData.name);
+      console.log("Synced User:", userData.name);
       
-      // 2. Update State with REAL data
+      // 2. DEFENSIVE CHECK: Handle direct vs wrapped response
+      const followingList = userData.following || userData.data?.following || [];
+
+      // 3. Update State with REAL data
       setUser({
         name: userData.name,
-        interests: userData.interests || [] 
+        following: followingList
       });
 
       setEvents(eventData);
 
     } catch (err) {
       console.log("Failed to load home data", err);
-      // Optional: If error is 401, redirect to login
-      // router.replace('/auth/login');
     } finally {
       setLoading(false);
     }
   };
 
   // --- Sorting Logic ---
-  const sortEventsByInterest = (eventsList: any[]) => {
+  const sortEventsByFollowing = (eventsList: any[]) => {
     return [...eventsList].sort((a, b) => {
-      const aInterested = user.interests.includes(a.clubId);
-      const bInterested = user.interests.includes(b.clubId);
+      const aFollowed = (user as any).following.includes(a.clubId);
+      const bFollowed = (user as any).following.includes(b.clubId);
       
-      if (aInterested && !bInterested) return -1;
-      if (!aInterested && bInterested) return 1;
+      if (aFollowed && !bFollowed) return -1;
+      if (!aFollowed && bFollowed) return 1;
       return 0;
     });
   };
 
-  const liveEvents = useMemo(() => 
-    sortEventsByInterest(events.filter((e: any) => e.badge === 'LIVE')), 
-  [user.interests, events]);
+  // Recalculate lists whenever user.following changes
+  const liveEvents = React.useMemo(() => 
+    sortEventsByFollowing(events.filter((e: any) => e.badge === 'LIVE')), 
+  [(user as any).following, events]);
 
-  const upcomingEvents = useMemo(() => 
-    sortEventsByInterest(events.filter((e: any) => e.badge === 'UPCOMING')), 
-  [user.interests, events]);
+  const upcomingEvents = React.useMemo(() => 
+    sortEventsByFollowing(events.filter((e: any) => e.badge === 'UPCOMING')), 
+  [(user as any).following, events]);
 
-  if (loading) {
+  if (loading && events.length === 0) {
     return (
       <View className="flex-1 bg-[#050505] justify-center items-center">
         <ActivityIndicator size="large" color={THEME_ACCENT} />
@@ -116,7 +125,7 @@ export default function HomeScreen() {
               Welcome Back
             </Text>
             <Text className="text-white text-3xl font-black tracking-tight">
-              {user.name}.
+              {(user as any).name},
             </Text>
           </View>
           <View className="flex-row gap-4">
@@ -133,7 +142,7 @@ export default function HomeScreen() {
           
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 24 }} className="mb-10">
             {liveEvents.map((event: any) => {
-              const isInterested = user.interests.includes(event.clubId);
+              const isFollowed = (user as any).following.includes(event.clubId);
               const cardColor = event.color || THEME_ACCENT; 
               
               return (
@@ -142,11 +151,11 @@ export default function HomeScreen() {
                   activeOpacity={0.8}
                   className="w-[220px] h-[260px] bg-[#121212] rounded-[32px] mr-4 p-5 justify-between overflow-hidden"
                   style={{ 
-                    borderWidth: isInterested ? 1 : 0,
-                    borderColor: isInterested ? getRgba(cardColor, 0.4) : 'transparent'
+                    borderWidth: isFollowed ? 1 : 0,
+                    borderColor: isFollowed ? getRgba(cardColor, 0.4) : 'transparent'
                   }}
                 >
-                  {isInterested ? (
+                  {isFollowed ? (
                      <View className="absolute -right-10 -top-10 w-40 h-40 rounded-full blur-3xl" 
                            style={{ backgroundColor: getRgba(cardColor, 0.2) }} />
                   ) : (
@@ -190,7 +199,7 @@ export default function HomeScreen() {
           
           <View className="px-6 mb-10 space-y-3">
             {upcomingEvents.map((event: any) => {
-               const isInterested = user.interests.includes(event.clubId);
+               const isFollowed = (user as any).following.includes(event.clubId);
                const cardColor = event.color || '#fff';
                const dateObj = new Date(event.date);
                const day = dateObj.getDate();
@@ -202,14 +211,14 @@ export default function HomeScreen() {
                   activeOpacity={0.7}
                   className="w-full bg-[#121212] rounded-[24px] p-4 flex-row items-center"
                   style={{ 
-                    borderWidth: isInterested ? 1 : 0,
-                    borderColor: isInterested ? getRgba(cardColor, 0.3) : 'transparent'
+                    borderWidth: isFollowed ? 1 : 0,
+                    borderColor: isFollowed ? getRgba(cardColor, 0.3) : 'transparent'
                   }}
                 >
                   <View className="w-16 h-16 rounded-2xl items-center justify-center mr-4"
-                        style={{ backgroundColor: isInterested ? getRgba(cardColor, 0.1) : '#1A1A1A' }}>
+                        style={{ backgroundColor: isFollowed ? getRgba(cardColor, 0.1) : '#1A1A1A' }}>
                     <Text className="text-[10px] font-black uppercase mb-0.5"
-                          style={{ color: isInterested ? cardColor : '#737373' }}>
+                          style={{ color: isFollowed ? cardColor : '#737373' }}>
                       {month}
                     </Text>
                     <Text className="text-white text-xl font-black">{day}</Text>
