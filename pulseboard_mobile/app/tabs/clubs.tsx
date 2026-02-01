@@ -1,64 +1,99 @@
-import React, { useState } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, TextInput, SafeAreaView, StatusBar } from 'react-native';
-import { Search, Filter, Check, Plus } from 'lucide-react-native';
+import React, { useState, useCallback } from 'react';
+import {
+  View,
+  Text,
+  ScrollView,
+  TouchableOpacity,
+  TextInput,
+  SafeAreaView,
+  StatusBar,
+  Alert,
+  ActivityIndicator,
+} from 'react-native';
+import { Search, Check, Plus } from 'lucide-react-native';
+import { useFocusEffect } from 'expo-router';
+import { toggleFollowClubApi } from '../../src/api/club.api';
+import { getUserProfile } from '../../src/api/user.api';
+import { LinearGradient } from 'expo-linear-gradient';
+import { widthPercentageToDP as wp, heightPercentageToDP as hp } from 'react-native-responsive-screen';
 
-// --- Theme Constants (Matches Home Screen) ---
-const THEME_ACCENT = '#CCF900'; // Volt Yellow
-const THEME_BLACK = '#050505';
-const THEME_CARD = '#121212';
+// --- Theme Constants ---
+const THEME = {
+  ACCENT: '#CCF900',      // Volt Yellow
+  ACCENT_GLOW: 'rgba(204, 249, 0, 0.15)',
+  BG: '#050505',          // Deep Black
+  CARD_BG: '#09090B',     // Matte Zinc
+};
 
 export default function ClubsScreen() {
   const [searchQuery, setSearchQuery] = useState('');
   const [activeCategory, setActiveCategory] = useState('all');
-  
-  // FIX 1: Explicitly type the state as an array of strings
-  const [followedClubs, setFollowedClubs] = useState<string[]>([]); 
+  const [followedClubs, setFollowedClubs] = useState<number[]>([]);
+  const [loadingId, setLoadingId] = useState<number | null>(null);
 
-  // FIX 3: Real Data (IDs 1-15) - Synced with your backend data
+  // DATA: Manual IDs 1-15
   const clubs = [
-    { id: 1, name: 'Quant Club', icon: '📈', category: 'Technical', followers: '450', description: 'Algorithmic Trading & Finance' },
-    { id: 2, name: 'Devlup Labs', icon: '💻', category: 'Technical', followers: '1.2K', description: 'Open Source Development' },
-    { id: 3, name: 'RAID', icon: '🤖', category: 'Technical', followers: '890', description: 'AI & Deep Learning' },
-    { id: 4, name: 'Inside', icon: '👾', category: 'Technical', followers: '620', description: 'Game Development Society' },
-    { id: 5, name: 'Product Club', icon: '📱', category: 'Technical', followers: '340', description: 'Product Design & Mgmt' },
-    { id: 6, name: 'PSOC', icon: '⌨️', category: 'Technical', followers: '1.1K', description: 'Competitive Programming' },
-    { id: 7, name: 'TGT', icon: '🎸', category: 'Cultural', followers: '950', description: 'The Groove Theory (Music)' },
-    { id: 8, name: 'Shutterbugs', icon: '📸', category: 'Cultural', followers: '780', description: 'Photography Society' },
-    { id: 9, name: 'Ateliers', icon: '🎨', category: 'Cultural', followers: '560', description: 'Fine Arts & Crafts' },
-    { id: 10, name: 'FrameX', icon: '🎬', category: 'Cultural', followers: '820', description: 'Filmmaking & Editing' },
-    { id: 11, name: 'Designerds', icon: '📐', category: 'Cultural', followers: '910', description: 'UI/UX & Graphic Design' },
-    { id: 12, name: 'Dramebaaz', icon: '🎭', category: 'Cultural', followers: '850', description: 'Drama & Theatrics' },
-    { id: 13, name: 'E-Cell', icon: '💼', category: 'Other', followers: '1.5K', description: 'Entrepreneurship Cell' },
-    { id: 14, name: 'Nexus', icon: '💡', category: 'Other', followers: '670', description: 'Innovation & Ideas' },
-    { id: 15, name: 'Respawn', icon: '🎮', category: 'Other', followers: '2.1K', description: 'eSports & Gaming' },
+    { id: 1, name: 'Quant Club', icon: '📈', category: 'Technical', description: 'Algorithmic Trading & Finance' },
+    { id: 2, name: 'Devlup Labs', icon: '💻', category: 'Technical', description: 'Open Source Development' },
+    { id: 3, name: 'RAID', icon: '🤖', category: 'Technical', description: 'AI & Deep Learning' },
+    { id: 4, name: 'Inside', icon: '👾', category: 'Technical', description: 'Game Development Society' },
+    { id: 5, name: 'Product Club', icon: '📱', category: 'Technical', description: 'Product Design & Mgmt' },
+    { id: 6, name: 'PSOC', icon: '⌨️', category: 'Technical', description: 'Competitive Programming' },
+    { id: 7, name: 'TGT', icon: '🎸', category: 'Cultural', description: 'The Groove Theory (Music)' },
+    { id: 8, name: 'Shutterbugs', icon: '📸', category: 'Cultural', description: 'Photography Society' },
+    { id: 9, name: 'Ateliers', icon: '🎨', category: 'Cultural', description: 'Fine Arts & Crafts' },
+    { id: 10, name: 'FrameX', icon: '🎬', category: 'Cultural', description: 'Filmmaking & Editing' },
+    { id: 11, name: 'Designerds', icon: '📐', category: 'Cultural', description: 'UI/UX & Graphic Design' },
+    { id: 12, name: 'Dramebaaz', icon: '🎭', category: 'Cultural', description: 'Drama & Theatrics' },
+    { id: 13, name: 'E-Cell', icon: '💼', category: 'Other', description: 'Entrepreneurship Cell' },
+    { id: 14, name: 'Nexus', icon: '💡', category: 'Other', description: 'Innovation & Ideas' },
+    { id: 15, name: 'Respawn', icon: '🎮', category: 'Other', description: 'eSports & Gaming' },
   ];
 
   const categories = ['all', 'Technical', 'Cultural', 'Other'];
 
+  // --- Real-Time Sync Logic ---
+  useFocusEffect(
+    useCallback(() => {
+      fetchUserFollowing();
+    }, [])
+  );
+
+  const fetchUserFollowing = async () => {
+    try {
+      const res: any = await getUserProfile();
+      const list = res.following || res.data?.following || [];
+      setFollowedClubs(list);
+    } catch (err) {
+      console.error("Profile Sync Error:", err);
+    }
+  };
+
+  const toggleFollow = async (clubId: number) => {
+    setLoadingId(clubId);
+    try {
+      const res: any = await toggleFollowClubApi(clubId);
+      const updatedList = res.following || res.data?.following || [];
+      setFollowedClubs(updatedList);
+    } catch (err) {
+      Alert.alert("Connection Error", "Could not update follow status.");
+    } finally {
+      setLoadingId(null);
+    }
+  };
+
   const filterClubs = () => {
     let filtered = clubs;
-    
     if (activeCategory !== 'all') {
       filtered = filtered.filter(club => club.category === activeCategory);
     }
-    
     if (searchQuery) {
-      filtered = filtered.filter(club => 
+      filtered = filtered.filter(club =>
         club.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
         club.description.toLowerCase().includes(searchQuery.toLowerCase())
       );
     }
-    
     return filtered;
-  };
-
-  // FIX 1 (Part 2): TypeScript requires explicit type here. kept as requested.
-  const toggleFollow = (clubName: string) => {
-    setFollowedClubs(prev => 
-      prev.includes(clubName) 
-        ? prev.filter(c => c !== clubName)
-        : [...prev, clubName]
-    );
   };
 
   const displayedClubs = filterClubs();
@@ -66,118 +101,199 @@ export default function ClubsScreen() {
   return (
     <SafeAreaView className="flex-1 bg-[#050505]">
       <StatusBar barStyle="light-content" backgroundColor="#050505" />
-      
-      {/* Header */}
-      <View className="px-6 py-4">
-        <Text className="text-neutral-500 font-bold text-xs tracking-[3px] uppercase mb-1">
-          Directory
+
+      {/* 1. HEADER */}
+      <View style={{ paddingHorizontal: wp('7%'), paddingTop: hp('3.5%'), paddingBottom: hp('2%') }}>
+        <Text
+          className="text-neutral-500 font-bold uppercase"
+          style={{ fontSize: hp('1.5%'), letterSpacing: 4, marginBottom: hp('0.5%') }}
+        >
+          Explore
         </Text>
-        <Text className="text-white text-3xl font-black tracking-tight">
-          CLUBS.
+        <Text
+          className="text-white font-black tracking-tight"
+          style={{ fontSize: hp('4%') }}
+        >
+          DIRECTORY
         </Text>
       </View>
 
-      {/* Search Bar */}
-      <View className="flex-row items-center bg-[#1A1A1A] rounded-2xl mx-6 mb-6 px-4 py-1">
-        <Search color={THEME_ACCENT} size={20} className="mr-3" />
-        <TextInput
-          className="flex-1 text-white text-base py-3 font-medium"
-          placeholder="Find a club..."
-          placeholderTextColor="#555"
-          value={searchQuery}
-          onChangeText={setSearchQuery}
-        />
-        {/* Visual decoration only */}
-        <View className="h-4 w-[1px] bg-neutral-700 mx-3" />
-        <Filter color="#555" size={20} />
+      {/* 2. GLASSY STATS STRIP */}
+      <View style={{ paddingHorizontal: wp('6%'), marginBottom: hp('3%') }}>
+        <View
+          className="flex-row bg-[#09090B] border border-white/10 rounded-2xl overflow-hidden"
+          style={{ height: hp('10%') }}
+        >
+          {/* Left Side: Total */}
+          <View className="flex-1 justify-center border-r border-white/5" style={{ paddingHorizontal: wp('5%') }}>
+            <Text
+              className="text-neutral-500 font-bold uppercase tracking-wider"
+              style={{ fontSize: hp('1.2%'), marginBottom: hp('0.5%') }}
+            >
+              Total Clubs
+            </Text>
+            <Text className="text-white font-black" style={{ fontSize: hp('3%') }}>
+              {clubs.length}
+            </Text>
+          </View>
+
+          {/* Right Side: Following */}
+          <View className="flex-1 justify-center relative" style={{ paddingHorizontal: wp('5%') }}>
+            <LinearGradient
+              colors={[THEME.ACCENT_GLOW, 'transparent']}
+              start={{ x: 1, y: 0 }}
+              end={{ x: 0, y: 1 }}
+              className="absolute inset-0 opacity-50"
+            />
+            <Text
+              className="text-[#CCF900] font-bold uppercase tracking-wider"
+              style={{ fontSize: hp('1.2%'), marginBottom: hp('0.5%') }}
+            >
+              Following
+            </Text>
+            <Text className="text-white font-black" style={{ fontSize: hp('3%') }}>
+              {followedClubs.length}
+            </Text>
+          </View>
+        </View>
       </View>
 
-      {/* Categories Pills */}
-      <View>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 24, paddingBottom: 20 }}>
+      {/* 3. SEARCH BAR */}
+      <View style={{ paddingHorizontal: wp('6%'), marginBottom: hp('3%') }}>
+        <View
+          className="flex-row items-center bg-[#121212] border border-white/10 rounded-xl px-4"
+          style={{ height: hp('6%') }}
+        >
+          <Search color={THEME.ACCENT} size={hp('2.2%')} className="mr-3 opacity-80" />
+          <TextInput
+            className="flex-1 text-white font-medium"
+            style={{ fontSize: hp('1.6%') }}
+            placeholder="Search for clubs..."
+            placeholderTextColor="#52525B"
+            value={searchQuery}
+            onChangeText={setSearchQuery}
+          />
+        </View>
+      </View>
+
+      {/* 4. NAV STRIP (Horizontal Scroll) */}
+      <View style={{ marginBottom: hp('3%') }}>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={{ paddingHorizontal: wp('6%') }}
+        >
           {categories.map(category => {
             const isActive = activeCategory === category;
             return (
               <TouchableOpacity
                 key={category}
                 onPress={() => setActiveCategory(category)}
-                className={`px-6 py-2.5 rounded-full mr-3 border ${
-                  isActive 
-                    ? 'bg-[#CCF900] border-[#CCF900]' 
-                    : 'bg-[#121212] border-neutral-800'
-                }`}
+                activeOpacity={0.7}
+                style={{ marginRight: wp('3%') }}
               >
-                <Text className={`text-xs font-bold uppercase tracking-wider ${
-                  isActive ? 'text-black' : 'text-neutral-400'
-                }`}>
-                  {category}
-                </Text>
+                <View
+                  className={`rounded-full border ${isActive
+                      ? 'bg-[#CCF900] border-[#CCF900]'
+                      : 'bg-transparent border border-white/15'
+                    }`}
+                  style={{ paddingHorizontal: wp('5%'), paddingVertical: hp('1.2%') }}
+                >
+                  <Text
+                    className={`font-bold uppercase tracking-wide ${isActive ? 'text-black' : 'text-neutral-400'
+                      }`}
+                    style={{ fontSize: hp('1.4%') }}
+                  >
+                    {category}
+                  </Text>
+                </View>
               </TouchableOpacity>
             );
           })}
         </ScrollView>
       </View>
 
-      {/* Stats Row */}
-      <View className="flex-row px-6 mb-6 justify-between">
-        <View className="w-[48%] bg-[#121212] rounded-2xl p-4 border border-neutral-900">
-           <Text className="text-neutral-500 text-[10px] font-black tracking-widest uppercase mb-1">Total Clubs</Text>
-           <Text className="text-white text-2xl font-black">{clubs.length}</Text>
-        </View>
-        <View className="w-[48%] bg-[#121212] rounded-2xl p-4 border border-neutral-900">
-           <Text className="text-[#CCF900] text-[10px] font-black tracking-widest uppercase mb-1">Following</Text>
-           <Text className="text-white text-2xl font-black">{followedClubs.length}</Text>
-        </View>
-      </View>
-
-      {/* Clubs Grid */}
-      <ScrollView className="flex-1 px-6" showsVerticalScrollIndicator={false}>
-        
-        <View className="flex-row flex-wrap justify-between pb-20">
+      {/* 5. CLUBS GRID */}
+      <ScrollView
+        className="flex-1"
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={{ paddingHorizontal: wp('6%'), paddingBottom: hp('15%') }}
+      >
+        <View className="flex-row flex-wrap justify-between">
           {displayedClubs.map(club => {
-            const isFollowed = followedClubs.includes(club.name);
-            return (
-              <View 
-                key={club.id} 
-                className={`w-[48%] bg-[#121212] rounded-[24px] p-5 mb-4 justify-between border ${isFollowed ? 'border-[#CCF900]/50' : 'border-neutral-900'}`}
-              >
-                <View>
-                  <View className="flex-row justify-between items-start mb-4">
-                    <Text className="text-4xl">{club.icon}</Text>
-                    {isFollowed && (
-                      <View className="w-6 h-6 bg-[#CCF900]/20 rounded-full items-center justify-center">
-                        <Check size={12} color="#CCF900" strokeWidth={4} />
-                      </View>
-                    )}
-                  </View>
-                  
-                  <Text className="text-white text-lg font-black leading-6 mb-2">
-                    {club.name}
-                  </Text>
-                  <Text className="text-neutral-500 text-xs leading-4 mb-4" numberOfLines={2}>
-                    {club.description}
-                  </Text>
-                </View>
+            const isFollowed = followedClubs.includes(club.id);
+            const isLoading = loadingId === club.id;
 
-                <View>
-                  <Text className="text-neutral-600 text-[10px] font-bold uppercase tracking-wider mb-3">
-                    {club.followers} Followers
-                  </Text>
-                  
-                  <TouchableOpacity
-                    onPress={() => toggleFollow(club.name)}
-                    className={`w-full py-3 rounded-xl flex-row items-center justify-center ${
-                      isFollowed 
-                        ? 'bg-[#1A1A1A]' 
-                        : 'bg-[#CCF900]'
+            return (
+              <View
+                key={club.id}
+                style={{ width: wp('42%'), marginBottom: hp('2%') }}
+              >
+                <View
+                  className={`rounded-[20px] border justify-between relative overflow-hidden ${isFollowed
+                      ? 'bg-[#0E0E10] border-[#CCF900]/30'
+                      : 'bg-[#09090B] border-white/5'
                     }`}
+                  style={{ padding: wp('4%'), height: hp('26%') }}
+                >
+                  {/* Subtle Glow Background for Followed Items */}
+                  {isFollowed && (
+                    <View className="absolute -top-10 -right-10 w-32 h-32 bg-[#CCF900] opacity-5 blur-3xl rounded-full" />
+                  )}
+
+                  <View>
+                    <View className="flex-row justify-between items-start" style={{ marginBottom: hp('2%') }}>
+                      <Text style={{ fontSize: hp('3.5%') }}>{club.icon}</Text>
+                      {isFollowed && (
+                        <View className="bg-[#CCF900]/10 p-1 rounded-full">
+                          <Check size={hp('1.5%')} color="#CCF900" strokeWidth={4} />
+                        </View>
+                      )}
+                    </View>
+
+                    <Text
+                      className="text-white font-extrabold"
+                      style={{ fontSize: hp('2%'), lineHeight: hp('2.5%'), marginBottom: hp('1%') }}
+                    >
+                      {club.name}
+                    </Text>
+                    <Text
+                      className="text-neutral-500 font-medium"
+                      style={{ fontSize: hp('1.3%'), lineHeight: hp('1.6%') }}
+                      numberOfLines={3}
+                    >
+                      {club.description}
+                    </Text>
+                  </View>
+
+                  <TouchableOpacity
+                    onPress={() => toggleFollow(club.id)}
+                    disabled={isLoading}
+                    activeOpacity={0.8}
+                    className={`w-full rounded-lg flex-row items-center justify-center ${isFollowed
+                        ? 'bg-white/5 border border-white/10'
+                        : 'bg-[#CCF900]'
+                      }`}
+                    style={{ paddingVertical: hp('1.2%') }}
                   >
-                    {isFollowed ? (
-                      <Text className="text-neutral-400 text-xs font-bold uppercase">Following</Text>
+                    {isLoading ? (
+                      <ActivityIndicator size="small" color={isFollowed ? "white" : "black"} />
+                    ) : isFollowed ? (
+                      <Text
+                        className="text-white/60 font-bold uppercase tracking-wider"
+                        style={{ fontSize: hp('1.1%') }}
+                      >
+                        Following
+                      </Text>
                     ) : (
                       <>
-                        <Plus size={14} color="black" strokeWidth={4} style={{ marginRight: 4 }} />
-                        <Text className="text-black text-xs font-bold uppercase">Follow</Text>
+                        <Plus size={hp('1.4%')} color="black" strokeWidth={4} style={{ marginRight: 4 }} />
+                        <Text
+                          className="text-black font-bold uppercase tracking-wider"
+                          style={{ fontSize: hp('1.1%') }}
+                        >
+                          Follow
+                        </Text>
                       </>
                     )}
                   </TouchableOpacity>
@@ -188,10 +304,16 @@ export default function ClubsScreen() {
         </View>
 
         {displayedClubs.length === 0 && (
-          <View className="items-center justify-center py-20 opacity-50">
-            <Text className="text-6xl mb-4 grayscale">🔭</Text>
-            <Text className="text-neutral-400 text-base font-bold">No signals found.</Text>
-            <Text className="text-neutral-600 text-sm mt-2">Adjust your filters.</Text>
+          <View className="items-center justify-center opacity-50"
+            style={{ marginTop: hp('5%') }}
+          >
+            <Text style={{ fontSize: hp('6%'), marginBottom: hp('1%'), opacity: 0.5 }}>🔭</Text>
+            <Text
+              className="text-neutral-500 font-bold"
+              style={{ fontSize: hp('1.6%') }}
+            >
+              No results found.
+            </Text>
           </View>
         )}
       </ScrollView>
