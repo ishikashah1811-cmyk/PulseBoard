@@ -1,12 +1,13 @@
 import { Router } from "express";
-// NOTE: removed the '.ts' extension from imports (standard practice in Node/TS)
-import { createClub, toggleFollowClub } from "../controllers/club.controller.ts";
-// FIX: Import 'authenticate' (that's the real name inside your file)
+
 import { authenticate } from '../middlewares/auth.middleware.ts';
+import { createClub , getClubById , toggleFollowClub, getAllClubs } from "../controllers/club.controller.ts";
+
 
 const router = Router();
-
-router.post("/", createClub); 
+router.get("/", getAllClubs);     // 👈 ADD THIS
+router.get("/:id", getClubById);
+router.post("/", createClub);
 
 // FIX: Use 'authenticate' variable here
 router.post('/follow/:clubId', authenticate, toggleFollowClub);

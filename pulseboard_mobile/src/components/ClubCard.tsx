@@ -1,22 +1,41 @@
 import React from "react";
-import { View, Text, TouchableOpacity, GestureResponderEvent } from "react-native";
+import { View, Text, TouchableOpacity } from "react-native";
+import { router } from "expo-router";
 
 type ClubCardProps = {
   icon: string;
   name: string;
   selected: boolean;
-  onPress: (event: GestureResponderEvent) => void;
+  clubId: string;
+  onPress?: () => void;
 };
 
 export default function ClubCard({
   icon,
   name,
   selected,
+  clubId,
   onPress,
 }: ClubCardProps) {
+  
+  const handlePress = () => {
+    // 1. Log to verify the button is actually working
+    console.log("Card pressed! Target ID:", clubId);
+
+    // 2. Run parent logic (like highlighting the card) if it exists
+    if (onPress) {
+      onPress();
+    }
+
+    // 3. ALWAYS navigate to the club profile
+    // Note: Ensure your file is named [clubId].tsx in app/clubs/
+    router.push(`/clubs/${clubId}`);
+  };
+
   return (
     <TouchableOpacity
-      onPress={onPress}
+      onPress={handlePress}
+      activeOpacity={0.7}
       className={`border-2 rounded-2xl p-4 mb-4 flex-row items-center justify-between
         ${selected ? "border-green-400 bg-green-500/10" : "border-green-800 bg-black"}
       `}

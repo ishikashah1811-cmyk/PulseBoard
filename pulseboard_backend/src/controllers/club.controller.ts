@@ -1,6 +1,7 @@
 import type { Request, Response } from "express";
-import Club from "../models/Club.model.ts"; // removed .ts extension for cleaner import
-import User from "../models/User.model.ts"; // removed .ts extension for cleaner import
+import mongoose from "mongoose";
+import Club from "../models/Club.model.ts";
+import User from "../models/User.model.ts";
 
 interface AuthenticatedRequest extends Request {
   user?: {
@@ -14,7 +15,9 @@ export const createClub = async (req: Request, res: Response) => {
     const { clubId, name, description, category } = req.body;
 
     if (!clubId || !name || !description || !category) {
-      return res.status(400).json({ message: "Please provide clubId, name, description, and category" });
+      return res.status(400).json({
+        message: "Please provide clubId, name, description, and category",
+      });
     }
 
     const existingClub = await Club.findOne({ $or: [{ name }, { clubId }] });
@@ -22,19 +25,24 @@ export const createClub = async (req: Request, res: Response) => {
       return res.status(400).json({ message: "Club or ID already exists" });
     }
 
-    // New clubs start with 0 followers automatically via default value in Schema
     const newClub = new Club({ clubId, name, description, category });
     const savedClub = await newClub.save();
 
-    res.status(201).json({ message: "Club created successfully", club: savedClub });
+    res.status(201).json({
+      message: "Club created successfully",
+      club: savedClub,
+    });
   } catch (error) {
     console.error("Error creating club:", error);
     res.status(500).json({ message: "Server error" });
   }
 };
 
-// --- Toggle Follow (Optimized) ---
-export const toggleFollowClub = async (req: AuthenticatedRequest, res: Response) => {
+// --- Toggle Follow ---
+export const toggleFollowClub = async (
+  req: AuthenticatedRequest,
+  res: Response
+) => {
   const { clubId } = req.params;
   const userId = req.user?.userId;
 
@@ -48,33 +56,71 @@ export const toggleFollowClub = async (req: AuthenticatedRequest, res: Response)
 
     const numericId = Number(clubId);
     if (isNaN(numericId)) {
-        return res.status(400).json({ message: "Invalid Club ID format" });
+      return res.status(400).json({ message: "Invalid Club ID format" });
     }
 
-    // Check if user is ALREADY following
     const followingList = (user.following as number[]) || [];
     const isFollowing = followingList.includes(numericId);
 
     if (isFollowing) {
-      // UNFOLLOW: Remove from User list, Decrement Club count
       await Promise.all([
-        User.findByIdAndUpdate(userId, { $pull: { following: numericId } }),
-        Club.findOneAndUpdate({ clubId: numericId }, { $inc: { followers: -1 } })
+        User.findByIdAndUpdate(userId, {
+          $pull: { following: numericId },
+        }),
+        Club.findOneAndUpdate(
+          { clubId: numericId },
+          { $inc: { followers: -1 } }
+        ),
       ]);
     } else {
-      // FOLLOW: Add to User list, Increment Club count
       await Promise.all([
-        User.findByIdAndUpdate(userId, { $addToSet: { following: numericId } }),
-        Club.findOneAndUpdate({ clubId: numericId }, { $inc: { followers: 1 } })
+        User.findByIdAndUpdate(userId, {
+          $addToSet: { following: numericId },
+        }),
+        Club.findOneAndUpdate(
+          { clubId: numericId },
+          { $inc: { followers: 1 } }
+        ),
       ]);
     }
 
-    // Fetch fresh list to update frontend state immediately
-    const updatedUser = await User.findById(userId).select('following');
-    res.json({ following: updatedUser?.following || [] });
+    const updatedUser = await User.findById(userId).select("following");
 
+    res.json({ following: updatedUser?.following || [] });
   } catch (error) {
     console.error("Toggle Follow Error:", error);
     res.status(500).json({ message: "Server Error" });
+  }
+};
+
+// --- Get Club by Mongo _id ---
+export const getClubById = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({ message: "Invalid club id" });
+    }
+
+    const club = await Club.findById(id);
+    if (!club) {
+      return res.status(404).json({ message: "Club not found" });
+    }
+
+    return res.status(200).json(club);
+  } catch (error) {
+    console.error("Get club error:", error);
+    return res.status(500).json({ message: "Server error" });
+  }
+};
+
+// --- Get All Clubs ---
+export const getAllClubs = async (_req: Request, res: Response) => {
+  try {
+    const clubs = await Club.find();
+    return res.status(200).json(clubs);
+  } catch (error) {
+    console.error("Get all clubs error:", error);
+    return res.status(500).json({ message: "Server error" });
   }
 };

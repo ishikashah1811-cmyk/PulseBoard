@@ -4,15 +4,16 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 // 1. ENVIRONMENT & FALLBACK
 // IMPORTANT: Replace '192.168.x.x' with your actual computer IP if not using the ENV variable.
 // We changed port 3000 -> 5000 to match your server.ts
-const API_URL = process.env.EXPO_PUBLIC_API_URL || 'http://192.168.1.5:5000'; 
+const API_URL = process.env.EXPO_PUBLIC_API_URL; 
 
 // 2. CREATE INSTANCE
 const api = axios.create({
-  baseURL: API_URL,
+  baseURL: `${API_URL}/api`,
   headers: {
     "Content-Type": "application/json",
   },
 });
+
 
 // 3. INTERCEPTOR: AUTO-ADD TOKEN
 // This preserves the logic you wanted: check storage, add header.
