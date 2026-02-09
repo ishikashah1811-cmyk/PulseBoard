@@ -15,6 +15,7 @@ router.post(
   "/save-push-token",
   authenticate,
   savePushToken
+  
 );
 
 export default router;
