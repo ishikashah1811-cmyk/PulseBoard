@@ -10,6 +10,14 @@ export interface IUser extends Document {
   branch?: string;
   following: number[];
   avatar?: string;
+  isCoreMember: boolean;
+  coreMembership?: {
+    clubId: string;
+    clubName: string;
+    clubColor: string;
+    clubIcon: string;
+    role: "core" | "admin" | "moderator";
+  };
 }
 
 const UserSchema: Schema = new Schema(
@@ -51,9 +59,28 @@ const UserSchema: Schema = new Schema(
       type: [Number],
       default: [],
     },
+    
     avatar: {
       type: String,
       default: ''
+    },
+
+    // NEW FIELDS FOR CORE MEMBER FUNCTIONALITY
+    isCoreMember: {
+      type: Boolean,
+      default: false,
+    },
+
+    coreMembership: {
+      clubId: { type: String },
+      clubName: { type: String },
+      clubColor: { type: String },
+      clubIcon: { type: String },
+      role: {
+        type: String,
+        enum: ["core", "admin", "moderator"],
+        default: "core",
+      },
     },
   },
   { timestamps: true }
