@@ -53,7 +53,7 @@ export const loginUser = async (
     // 3. Save token to backend
     if (expoPushToken) {
       await api.post(
-        "/api/users/save-push-token",
+        "/users/save-push-token",
         { expoPushToken },
         {
           headers: {
@@ -78,7 +78,7 @@ export const googleLoginUser = async (code: string) => {
 
     if (expoPushToken) {
       await api.post(
-        "/api/users/save-push-token",
+        "/users/save-push-token",
         { expoPushToken },
         {
           headers: {

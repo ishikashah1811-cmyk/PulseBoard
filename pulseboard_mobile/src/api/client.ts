@@ -4,7 +4,8 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 // 1. ENVIRONMENT & FALLBACK
 // IMPORTANT: Replace '192.168.x.x' with your actual computer IP if not using the ENV variable.
 // We changed port 3000 -> 5000 to match your server.ts
-const API_URL = process.env.EXPO_PUBLIC_API_URL; 
+const API_URL = process.env.EXPO_PUBLIC_API_URL;
+console.log('API_URL:', API_URL);
 
 // 2. CREATE INSTANCE
 const api = axios.create({
@@ -42,6 +43,7 @@ api.interceptors.response.use(
       console.log(`❌ Network Error (No Response) at ${API_URL}`);
     } else {
       console.log('❌ Request Error', error.message);
+      console.log('Error Config:', JSON.stringify(error.config, null, 2));
     }
     return Promise.reject(error);
   }

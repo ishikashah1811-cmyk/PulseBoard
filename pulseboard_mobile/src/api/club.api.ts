@@ -2,7 +2,7 @@ import api from './client';
 import client from './client';
 
 export const toggleFollowClubApi = (clubId: number) => {
-  return client.post(`/api/clubs/follow/${clubId}`);
+  return client.post(`/clubs/follow/${clubId}`);
 };
 
 export const getClubById = async (id: string) => {
