@@ -1,5 +1,5 @@
 import type { Request, Response } from 'express';
-import Event from '../models/Event.model.ts'; // Removed .ts extension for standard import
+import Event from '../models/Event.model'; // Removed .ts extension for standard import
 
 // --- Create Event ---
 export const createEvent = async (req: Request, res: Response) => {
@@ -62,5 +62,20 @@ export const getEventFeed = async (req: Request, res: Response) => {
   } catch (error) {
     console.error("Aggregation Error:", error);
     res.status(500).json({ message: 'Error fetching event feed', error });
+  }
+};
+// --- Get Events for a Single Club ---
+export const getEventsByClubId = async (req: Request, res: Response) => {
+  try {
+    const { clubId } = req.params;
+    // We find all events where clubId matches and sort by date
+    const events = await Event.find({ 
+      clubId: Number(clubId),
+      badge: { $in: ['LIVE', 'UPCOMING'] } 
+    }).sort({ date: 1 });
+
+    res.status(200).json(events);
+  } catch (error) {
+    res.status(500).json({ message: 'Error fetching events for this club', error });
   }
 };

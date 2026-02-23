@@ -1,6 +1,7 @@
+
 import type { Request, Response } from "express";
-import Club from "../models/Club.model.ts"; // removed .ts extension for cleaner import
-import User from "../models/User.model.ts"; // removed .ts extension for cleaner import
+import Club from "../models/Club.model"; // removed .ts extension for cleaner import
+import User from "../models/User.model"; // removed .ts extension for cleaner import
 
 interface AuthenticatedRequest extends Request {
   user?: {
@@ -48,7 +49,7 @@ export const toggleFollowClub = async (req: AuthenticatedRequest, res: Response)
 
     const numericId = Number(clubId);
     if (isNaN(numericId)) {
-        return res.status(400).json({ message: "Invalid Club ID format" });
+      return res.status(400).json({ message: "Invalid Club ID format" });
     }
 
     // Check if user is ALREADY following
@@ -78,3 +79,41 @@ export const toggleFollowClub = async (req: AuthenticatedRequest, res: Response)
     res.status(500).json({ message: "Server Error" });
   }
 };
+
+// --- Get All Clubs ---
+export const getAllClubs = async (req: Request, res: Response) => {
+  try {
+    const clubs = await Club.find();
+    res.json(clubs);
+  } catch (error) {
+    console.error("Error fetching clubs:", error);
+    res.status(500).json({ message: "Server error" });
+  }
+};
+
+
+export const getClubById = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+
+    // Convert to number because clubId is numeric
+    const numericId = Number(id);
+
+    if (isNaN(numericId)) {
+      return res.status(400).json({ message: "Invalid club ID" });
+    }
+
+    const club = await Club.findOne({ clubId: numericId });
+
+    if (!club) {
+      return res.status(404).json({ message: "Club not found" });
+    }
+
+    res.status(200).json(club);
+
+  } catch (error) {
+    console.error("Error fetching club by ID:", error);
+    res.status(500).json({ message: "Server error" });
+  }
+};
+
