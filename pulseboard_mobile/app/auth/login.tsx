@@ -33,7 +33,6 @@ const LN_VOLT = '#CCF900';
 
 // --- Load the Image ---
 const BG_IMAGE = require('../../assets/roll.jpg');
-
 // Google OAuth config — redirect URI is generated automatically by expo-auth-session
 const GOOGLE_CLIENT_ID = process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID || '';
 
@@ -133,7 +132,21 @@ export default function LoginScreen() {
 
       if (response.token) {
         await AsyncStorage.setItem('token', response.token);
-        router.replace('/tabs/home');
+
+        // Club portal routing logic
+        const clubEmails = [
+          'quantclub@iitj.ac.in', 'devluplabs@iitj.ac.in', 'raid@iitj.ac.in',
+          'inside@iitj.ac.in', 'theproductcub@iitj.ac.in', 'theproductclub@iitj.ac.in',
+          'psoc@iitj.ac.in', 'tgt@iitj.ac.in', 'shutterbugs@iitj.ac.in',
+          'atelier@iitj.ac.in', 'framex@iitj.ac.in', 'designerds@iitj.ac.in',
+          'dramebaaz@iitj.ac.in', 'ecell@iitj.ac.in', 'nexus@iitj.ac.in', 'respawn@iitj.ac.in'
+        ];
+
+        if (clubEmails.includes(email.toLowerCase().trim())) {
+          router.replace('/club_tabs/home');
+        } else {
+          router.replace('/tabs/home');
+        }
       } else {
         throw new Error("No token received");
       }
