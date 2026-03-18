@@ -173,6 +173,20 @@ export default function LoginScreen() {
           'Connection Failed',
           'Cannot reach the server. \n\n1. Check if backend is running.\n2. Ensure API_URL uses your IP (not localhost).'
         );
+      } else if (error?.response?.status === 403 && error?.response?.data?.requiresVerification) {
+        // Email not verified — redirect to OTP screen
+        const unverifiedEmail = error?.response?.data?.email || email;
+        Alert.alert(
+          'Email Not Verified',
+          'Please verify your email to continue.',
+          [
+            { text: 'Cancel', style: 'cancel' },
+            { 
+              text: 'Verify Now', 
+              onPress: () => router.push({ pathname: '/auth/verify-otp', params: { email: unverifiedEmail } })
+            }
+          ]
+        );
       } else {
         const msg = error?.response?.data?.message || 'Access Denied. Check credentials.';
         Alert.alert('System Error', msg);

@@ -6,6 +6,9 @@ export interface IUser extends Document {
   provider: "local" | "google";
   googleId?: string;
   password?: string;
+  isVerified: boolean;
+  otp?: string;
+  otpExpiry?: Date;
   year?: number;
   branch?: string;
   following: number[];
@@ -43,6 +46,19 @@ const UserSchema: Schema<IUser> = new Schema(
       required: function (this: IUser) {
         return this.provider === "local";
       },
+    },
+
+    isVerified: {
+      type: Boolean,
+      default: false,
+    },
+
+    otp: {
+      type: String,
+    },
+
+    otpExpiry: {
+      type: Date,
     },
 
     expoPushToken: {

@@ -63,10 +63,10 @@ export default function RegisterScreen() {
 
     setLoading(true);
     try {
-      await registerUser({ name, email, password });
+      const result = await registerUser({ name, email, password });
       
-      Alert.alert('Success', 'Account created successfully');
-      router.push('/auth/login');
+      Alert.alert('OTP Sent! 📧', 'A verification code has been sent to your email.');
+      router.push({ pathname: '/auth/verify-otp', params: { email } });
     } catch (err: any) {
       const status = err?.response?.status;
       const errorMsg = err?.response?.data?.message || '';

@@ -11,6 +11,27 @@ export interface RegisterPayload {
 
 export interface RegisterResponse {
   message: string;
+  email: string;
+}
+
+// --- OTP Types ---
+export interface VerifyOtpPayload {
+  email: string;
+  otp: string;
+}
+
+export interface VerifyOtpResponse {
+  token: string;
+  user: {
+    id: string;
+    name: string;
+    email: string;
+  };
+  message: string;
+}
+
+export interface ResendOtpResponse {
+  message: string;
 }
 
 // --- Login Types ---
@@ -27,13 +48,54 @@ export interface LoginResponse {
     email: string;
   };
   message: string;
+  requiresVerification?: boolean;
+  email?: string;
 }
 
-// --- Register Function ---
+// --- Register Function (now returns email for OTP screen) ---
 export const registerUser = async (
   data: RegisterPayload
 ): Promise<RegisterResponse> => {
   const res = await api.post<RegisterResponse>("/auth/register", data);
+  return res.data;
+};
+
+// --- Verify OTP Function ---
+export const verifyOtpUser = async (
+  data: VerifyOtpPayload
+): Promise<VerifyOtpResponse> => {
+  const res = await api.post<VerifyOtpResponse>("/auth/verify-otp", data);
+
+  if (res.data.token) {
+    // Save auth token immediately
+    await AsyncStorage.setItem("token", res.data.token);
+
+    // Register push token in background
+    setTimeout(() => {
+      registerForPushNotifications().then((expoPushToken) => {
+        if (expoPushToken) {
+          api.post(
+            "/users/save-push-token",
+            { expoPushToken },
+            {
+              headers: {
+                Authorization: `Bearer ${res.data.token}`,
+              },
+            }
+          ).catch((err) => console.log("Background push token error", err));
+        }
+      });
+    }, 2000);
+  }
+
+  return res.data;
+};
+
+// --- Resend OTP Function ---
+export const resendOtpUser = async (
+  email: string
+): Promise<ResendOtpResponse> => {
+  const res = await api.post<ResendOtpResponse>("/auth/resend-otp", { email });
   return res.data;
 };
 
