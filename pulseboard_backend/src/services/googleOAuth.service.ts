@@ -18,17 +18,20 @@ export const getGoogleUserFromIdToken = async (idToken: string) => {
   const payload = ticket.getPayload();
   if (!payload) throw new Error("Invalid Google token");
 
-  return payload;
+  return { payload, tokens: null };
 };
 
 /**
  * Exchanges an authorization code for tokens, then verifies the id_token.
  * Used for server-side / web OAuth flows.
  */
-export const getGoogleUser = async (code: string) => {
+export const getGoogleUser = async (code: string, redirectUri?: string) => {
   const client = getGoogleClient();
 
-  const { tokens } = await client.getToken(code);
+  const { tokens } = await client.getToken({
+    code,
+    redirect_uri: redirectUri || process.env.GOOGLE_REDIRECT_URI,
+  });
   client.setCredentials(tokens);
 
   const ticket = await client.verifyIdToken({
@@ -39,5 +42,5 @@ export const getGoogleUser = async (code: string) => {
   const payload = ticket.getPayload();
   if (!payload) throw new Error("Invalid Google token");
 
-  return payload;
+  return { payload, tokens };
 };

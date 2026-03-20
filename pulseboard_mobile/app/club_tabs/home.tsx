@@ -6,7 +6,7 @@ import {
 } from 'react-native';
 import {
     Menu, Calendar, PlayCircle, MapPin, LogOut,
-    X, Grid, Siren, Settings, ChevronRight, Plus, ChevronLeft
+    X, Grid, Siren, Settings, ChevronRight, Plus, Mail, ChevronLeft
 } from 'lucide-react-native';
 import { router, useFocusEffect } from 'expo-router';
 import { getEventFeed, createEventApi } from '../../src/api/event.api';
@@ -85,6 +85,7 @@ export default function ClubHomeScreen() {
     const [eventDate, setEventDate] = useState(new Date());
     const [showTimePicker, setShowTimePicker] = useState(false);
     const [eventTime, setEventTime] = useState(new Date());
+    const [emailModalVisible, setEmailModalVisible] = useState(false);
 
     useFocusEffect(useCallback(() => { loadData(); }, []));
 
@@ -223,7 +224,17 @@ export default function ClubHomeScreen() {
                 </ScrollView>
             </SafeAreaView>
 
-            {/* Floating Action Button for POST - integrated into home instead of _layout since home handles the modal state */}
+            {/* Floating Action Buttons */}
+            {/* Import from Email FAB (secondary) */}
+            <TouchableOpacity
+                style={[styles.fab, styles.fabSecondary]}
+                activeOpacity={0.8}
+                onPress={() => setEmailModalVisible(true)}
+            >
+                <Mail color="#CCF900" size={hp('2.8%')} strokeWidth={2.5} />
+            </TouchableOpacity>
+
+            {/* Post Event FAB (primary) */}
             <TouchableOpacity
                 style={styles.fab}
                 activeOpacity={0.8}
@@ -312,6 +323,61 @@ export default function ClubHomeScreen() {
                             <Text style={{ color: '#52525B', textAlign: 'center', fontWeight: 'bold' }}>Cancel</Text>
                         </TouchableOpacity>
                     </ScrollView>
+                </View>
+            </Modal>
+
+            {/* IMPORT FROM EMAIL MODAL */}
+            <Modal visible={emailModalVisible} animationType="slide" transparent>
+                <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.95)', justifyContent: 'flex-end' }}>
+                    <View style={{ backgroundColor: '#0E0E10', borderTopLeftRadius: 28, borderTopRightRadius: 28, padding: wp('6%'), paddingBottom: hp('5%'), borderWidth: 1, borderColor: '#27272A' }}>
+                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: hp('2.5%') }}>
+                            <View>
+                                <Text style={{ color: THEME_ACCENT, fontSize: hp('1.3%'), fontWeight: '900', letterSpacing: 2, textTransform: 'uppercase' }}>Auto-Import</Text>
+                                <Text style={{ color: 'white', fontSize: hp('2.6%'), fontWeight: '900' }}>Import from Email</Text>
+                            </View>
+                            <TouchableOpacity onPress={() => setEmailModalVisible(false)} style={{ width: wp('10%'), height: wp('10%'), backgroundColor: '#1A1A1A', borderRadius: 999, alignItems: 'center', justifyContent: 'center' }}>
+                                <X color="white" size={hp('2.2%')} />
+                            </TouchableOpacity>
+                        </View>
+
+                        {/* Step 1 */}
+                        <View style={{ backgroundColor: '#161618', borderRadius: 16, padding: wp('4.5%'), marginBottom: hp('1.5%'), borderWidth: 1, borderColor: '#222' }}>
+                            <Text style={{ color: THEME_ACCENT, fontSize: hp('1.3%'), fontWeight: '900', letterSpacing: 1, marginBottom: hp('0.5%') }}>STEP 1 — REGISTER YOUR EMAIL</Text>
+                            <Text style={{ color: '#A0A0A0', fontSize: hp('1.6%'), lineHeight: hp('2.4%') }}>
+                                Contact your admin to link your email to your club, or use:
+                            </Text>
+                            <Text style={{ color: 'white', fontSize: hp('1.5%'), fontWeight: '700', marginTop: hp('0.8%'), fontFamily: 'monospace', backgroundColor: '#0A0A0A', padding: hp('0.8%'), borderRadius: 8 }}>
+                                PATCH /api/clubs/{adminClub?.clubId}/email{`\n`}{'{"email": "yourname@example.com"}'}
+                            </Text>
+                        </View>
+
+                        {/* Step 2 */}
+                        <View style={{ backgroundColor: '#161618', borderRadius: 16, padding: wp('4.5%'), marginBottom: hp('1.5%'), borderWidth: 1, borderColor: '#222' }}>
+                            <Text style={{ color: THEME_ACCENT, fontSize: hp('1.3%'), fontWeight: '900', letterSpacing: 1, marginBottom: hp('0.5%') }}>STEP 2 — SEND ANY EMAIL</Text>
+                            <Text style={{ color: '#A0A0A0', fontSize: hp('1.6%'), lineHeight: hp('2.4%') }}>
+                                From your registered email, send to:
+                            </Text>
+                            <Text style={{ color: 'white', fontSize: hp('1.6%'), fontWeight: '700', marginTop: hp('0.8%'), fontFamily: 'monospace', backgroundColor: '#0A0A0A', padding: hp('0.8%'), borderRadius: 8 }}>
+                                events@pulseboard.mailgun.org
+                            </Text>
+                            <Text style={{ color: '#A0A0A0', fontSize: hp('1.5%'), marginTop: hp('1%'), lineHeight: hp('2.2%') }}>
+                                AI will read the subject and body to extract event details automatically. Any format works!
+                            </Text>
+                        </View>
+
+                        {/* Example */}
+                        <View style={{ backgroundColor: '#0D1117', borderRadius: 16, padding: wp('4.5%'), borderWidth: 1, borderColor: '#30363D' }}>
+                            <Text style={{ color: '#6B7280', fontSize: hp('1.3%'), fontWeight: '700', letterSpacing: 1, marginBottom: hp('0.5%') }}>EXAMPLE EMAIL</Text>
+                            <Text style={{ color: '#58A6FF', fontSize: hp('1.5%'), fontWeight: '600' }}>Subject: Final Hack Night — Hackathon Closing Ceremony</Text>
+                            <Text style={{ color: '#8B949E', fontSize: hp('1.5%'), marginTop: hp('0.5%'), lineHeight: hp('2.2%') }}>
+                                {`Hey team,\nJoin us for the closing ceremony on March 10th at 7 PM in LT-1.\nPrizes will be announced. All teams must attend.`}
+                            </Text>
+                        </View>
+
+                        <Text style={{ color: '#52525B', fontSize: hp('1.4%'), textAlign: 'center', marginTop: hp('2%') }}>
+                            Powered by Gemini AI · Events appear within seconds
+                        </Text>
+                    </View>
                 </View>
             </Modal>
 
@@ -515,5 +581,12 @@ const styles = StyleSheet.create({
         borderWidth: 2,
         borderColor: '#050505',
         zIndex: 40 // above list below sidebar
+    },
+    fabSecondary: {
+        bottom: hp('10%'),
+        backgroundColor: '#121212',
+        shadowColor: '#000',
+        shadowOpacity: 0.5,
+        borderColor: 'rgba(204,249,0,0.3)',
     }
 });

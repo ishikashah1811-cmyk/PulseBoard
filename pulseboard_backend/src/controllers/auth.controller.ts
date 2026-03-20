@@ -169,16 +169,16 @@ export const resendOtp = async (req: Request, res: Response) => {
 // ─────────────────────────────────────────────
 export const googleCallback = async (req: Request, res: Response) => {
   try {
-    const { id_token, code } = req.body;
+    const { id_token, code, redirectUri } = req.body;
 
     if (!id_token && !code) {
       return res.status(400).json({ error: "Provide id_token or code" });
     }
 
     // Resolve the Google user payload
-    const googleUser = id_token
+    const { payload: googleUser, tokens } = id_token
       ? await getGoogleUserFromIdToken(id_token)
-      : await getGoogleUser(code);
+      : await getGoogleUser(code, redirectUri);
 
     let user = await User.findOne({ email: googleUser.email });
 
@@ -188,8 +188,15 @@ export const googleCallback = async (req: Request, res: Response) => {
         email: googleUser.email,
         googleId: googleUser.sub,
         provider: "google",
+        googleAccessToken: tokens?.access_token || undefined,
+        googleRefreshToken: tokens?.refresh_token || undefined,
         isVerified: true, // Google-authenticated users are auto-verified
       });
+    } else if (tokens) {
+      // If user logs in again and we get new tokens (especially refresh_token), update them
+      if (tokens.access_token) user.googleAccessToken = tokens.access_token;
+      if (tokens.refresh_token) user.googleRefreshToken = tokens.refresh_token; // Refresh token is only sent on first consent usually
+      await user.save();
     }
 
     // Create Token

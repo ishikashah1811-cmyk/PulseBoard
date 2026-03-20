@@ -7,6 +7,8 @@ import clubRoutes from "./routes/club.routes";
 import eventRoutes from "./routes/event.routes";
 import userRoutes from "./routes/user.routes";
 import testRoutes from "./routes/test.routes";
+import emailRoutes from "./routes/email.routes";
+import { startGmailWatcher } from "./services/gmailWatcher.service";
 
 
 
@@ -16,6 +18,7 @@ const app = express();
 
 app.use(cors());
 app.use(express.json());
+app.use(express.urlencoded({ extended: true })); // Required for Mailgun form-data webhooks
 app.use((req, res, next) => {
   console.log(`[REQUEST] ${req.method} ${req.url}`);
   next();
@@ -26,6 +29,7 @@ app.use("/api/auth", router);
 app.use("/api/clubs", clubRoutes);
 app.use("/api/events", eventRoutes);
 app.use("/api/users", userRoutes);
+app.use("/api/email", emailRoutes);
 app.use("/api", testRoutes)
 
 mongoose
@@ -35,4 +39,5 @@ mongoose
 
 app.listen(process.env.PORT, () => {
   console.log(`Server running on port ${process.env.PORT}`);
+  startGmailWatcher(300_000); // Poll Gmail every 5 minutes (300,000 ms)
 });

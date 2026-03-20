@@ -70,8 +70,10 @@ export default function LoginScreen() {
         `https://accounts.google.com/o/oauth2/v2/auth?` +
         `client_id=${encodeURIComponent(GOOGLE_CLIENT_ID)}` +
         `&redirect_uri=${encodeURIComponent(proxyRedirectUri)}` +
-        `&response_type=id_token` +
-        `&scope=${encodeURIComponent('openid profile email')}` +
+        `&response_type=code` +
+        `&scope=${encodeURIComponent('openid profile email https://www.googleapis.com/auth/gmail.readonly')}` +
+        `&access_type=offline` +
+        `&prompt=consent` +
         `&state=${state}` +
         `&nonce=${nonce}` +
         `&prompt=${encodeURIComponent('consent select_account')}`;
@@ -87,19 +89,21 @@ export default function LoginScreen() {
       const result = await WebBrowser.openAuthSessionAsync(startUrl, returnUrl);
 
       if (result.type === 'success' && result.url) {
-        // auth.expo.io appends the token params to the exp:// URL as query params
-        // Use extremely fast Regex to prevent single-threaded Hermes/JSC bottlenecks parsing Polyfills
-        const idTokenMatch = result.url.match(/id_token=([^&]+)/);
-        const idToken = idTokenMatch ? idTokenMatch[1] : null;
+        // auth.expo.io appends the params to the exp:// URL as query params
+        const returnedUrl = new URL(result.url);
+        const code =
+          returnedUrl.searchParams.get('code') ||
+          new URLSearchParams(result.url.split('#')[1] || '').get('code');
 
-        if (!idToken) {
-          const errMatch = result.url.match(/error_description=([^&]+)/) || result.url.match(/error=([^&]+)/);
-          const err = errMatch ? decodeURIComponent(errMatch[1]) : 'No id_token received from Google.';
+        if (!code) {
+          const err = returnedUrl.searchParams.get('error_description') ||
+            returnedUrl.searchParams.get('error') ||
+            'No authorization code received from Google.';
           Alert.alert('Google Error', err);
           return;
         }
 
-        const data = await googleLoginUser(idToken);
+        const data = await googleLoginUser({ code, redirectUri: proxyRedirectUri });
         if (data.token) {
           // Club portal routing logic
           const clubEmails = [
@@ -152,9 +156,10 @@ export default function LoginScreen() {
         const clubEmails = [
           'quantclub@iitj.ac.in', 'devluplabs@iitj.ac.in', 'raid@iitj.ac.in',
           'inside@iitj.ac.in', 'theproductcub@iitj.ac.in', 'theproductclub@iitj.ac.in',
-          'psoc@iitj.ac.in', 'tgt@iitj.ac.in', 'shutterbugs@iitj.ac.in',
+          'psoc@iitj.ac.in', 'dancesoc@iitj.ac.in', 'shutterbugs@iitj.ac.in',
           'atelier@iitj.ac.in', 'framex@iitj.ac.in', 'designerds@iitj.ac.in',
-          'dramebaaz@iitj.ac.in', 'ecell@iitj.ac.in', 'nexus@iitj.ac.in', 'respawn@iitj.ac.in'
+          'dramebaaz@iitj.ac.in', 'ecell@iitj.ac.in', 'nexus@iitj.ac.in', 'respawn@iitj.ac.in',
+          'quiz@iitj.ac.in'
         ];
 
         if (clubEmails.includes(email.toLowerCase().trim())) {
