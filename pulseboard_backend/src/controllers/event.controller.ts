@@ -1,5 +1,8 @@
 import type { Request, Response } from 'express';
 import Event from '../models/Event.model';
+import User from '../models/User.model';
+import Club from '../models/Club.model';
+import { sendPushNotification } from '../services/notification.service';
 
 /**
  * --- Create Event ---
@@ -8,13 +11,30 @@ import Event from '../models/Event.model';
  */
 export const createEvent = async (req: Request, res: Response) => {
   try {
-    // This takes the payload (including the emoji icon) and creates the document
-    const newEvent = new Event(req.body); 
-    
-    // Stores the event in the database
-    const savedEvent = await newEvent.save(); 
-    
-    // Sends back the 201 Created status to the frontend
+    const newEvent = new Event(req.body);
+    const savedEvent = await newEvent.save();
+
+    // Notify all followers of this club in the background
+    const clubId = savedEvent.clubId;
+    const [club, followers] = await Promise.all([
+      Club.findOne({ clubId }).select('name').lean(),
+      User.find({ following: clubId, expoPushToken: { $exists: true, $ne: null } })
+          .select('expoPushToken').lean(),
+    ]);
+
+    if (followers.length > 0) {
+      const clubName = (club as any)?.name || 'A club';
+      console.log(`[Event] Notifying ${followers.length} follower(s) of club ${clubId}`);
+      followers.forEach(user => {
+        sendPushNotification(
+          (user as any).expoPushToken,
+          `${savedEvent.icon} New Event — ${clubName}`,
+          savedEvent.title,
+          { eventId: savedEvent._id?.toString() }
+        ).catch(() => {});
+      });
+    }
+
     res.status(201).json(savedEvent);
   } catch (error) {
     console.error("Error creating event:", error);

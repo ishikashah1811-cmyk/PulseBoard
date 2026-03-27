@@ -7,7 +7,8 @@ export interface IClub extends Document {
   category: "Technical" | "Cultural" | "Literary" | "Other";
   followers: number;
   image?: string;
-} 
+  email?: string;
+}
 
 const ClubSchema: Schema = new Schema(
   {
@@ -33,14 +34,21 @@ const ClubSchema: Schema = new Schema(
       required: true,
     },
     followers:
-      {
-        type: Number,
-        default: 0,
-      },
-      image:
-       { type: String,
-         default: ""
-         }
+    {
+      type: Number,
+      default: 0,
+    },
+    image:
+    {
+      type: String,
+      default: ""
+    },
+    email: {
+      type: String,
+      trim: true,
+      lowercase: true,
+      default: ""
+    }
   },
   { timestamps: true }
 );

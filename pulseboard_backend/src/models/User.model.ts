@@ -14,6 +14,8 @@ export interface IUser extends Document {
   following: number[];
   avatar?: string;
   expoPushToken?: string;
+  googleAccessToken?: string;
+  googleRefreshToken?: string;
   resetOtp?: string;
   resetOtpExpires?: Date;
 }
@@ -86,6 +88,14 @@ const UserSchema: Schema<IUser> = new Schema(
     avatar: {
       type: String,
       default: "",
+    },
+
+    googleAccessToken: {
+      type: String,
+    },
+
+    googleRefreshToken: {
+      type: String,
     },
   },
   { timestamps: true }

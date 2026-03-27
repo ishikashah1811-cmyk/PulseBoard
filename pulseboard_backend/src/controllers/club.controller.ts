@@ -20,8 +20,8 @@ export const getFollowedClubs = async (req: AuthenticatedRequest, res: Response)
 
     // Find clubs matching the user's following list
     // We use 'as any' to allow mixed types (Numbers/Strings) just in case
-    const followedClubs = await Club.find({ 
-      clubId: { $in: user.following as any } 
+    const followedClubs = await Club.find({
+      clubId: { $in: user.following as any }
     });
 
     res.json(followedClubs);
@@ -34,7 +34,7 @@ export const getFollowedClubs = async (req: AuthenticatedRequest, res: Response)
 // --- Create Club ---
 export const createClub = async (req: Request, res: Response) => {
   try {
-    const { clubId, name, description, category } = req.body;
+    const { clubId, name, description, category, email } = req.body;
 
     if (!clubId || !name || !description || !category) {
       return res.status(400).json({ message: "Please provide clubId, name, description, and category" });
@@ -45,7 +45,7 @@ export const createClub = async (req: Request, res: Response) => {
       return res.status(400).json({ message: "Club or ID already exists" });
     }
 
-    const newClub = new Club({ clubId, name, description, category });
+    const newClub = new Club({ clubId, name, description, category, email: email || '' });
     const savedClub = await newClub.save();
 
     res.status(201).json({ message: "Club created successfully", club: savedClub });
@@ -133,4 +133,29 @@ export const getClubById = async (req: Request, res: Response) => {
     res.status(500).json({ message: "Server error" });
   }
 };
+// --- Update Club Email (for email webhook matching) ---
+export const updateClubEmail = async (req: Request, res: Response) => {
+  try {
+    const { clubId } = req.params;
+    const { email } = req.body;
 
+    if (!email) {
+      return res.status(400).json({ message: 'Email is required' });
+    }
+
+    const club = await Club.findOneAndUpdate(
+      { clubId: Number(clubId) },
+      { email: email.toLowerCase().trim() },
+      { new: true }
+    );
+
+    if (!club) {
+      return res.status(404).json({ message: 'Club not found' });
+    }
+
+    res.status(200).json({ message: 'Club email updated', club });
+  } catch (error) {
+    console.error('Error updating club email:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+};
