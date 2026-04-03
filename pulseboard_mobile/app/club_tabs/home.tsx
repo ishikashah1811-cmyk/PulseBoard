@@ -2,11 +2,11 @@ import React, { useState, useCallback, useMemo } from 'react';
 import {
     View, Text, ScrollView, TouchableOpacity,
     SafeAreaView, StatusBar, ActivityIndicator, Platform, StyleSheet,
-    Modal, TextInput, TextInputProps, Alert
+    Modal, TextInput, TextInputProps, Alert, Image
 } from 'react-native';
 import {
     Menu, Calendar, PlayCircle, MapPin, LogOut,
-    X, Grid, Siren, Settings, ChevronRight, Plus, Mail, ChevronLeft
+    X, Grid, Siren, Settings, ChevronRight, Plus, Mail, ChevronLeft, ImageUp
 } from 'lucide-react-native';
 import { router, useFocusEffect } from 'expo-router';
 import { getEventFeed, createEventApi } from '../../src/api/event.api';
@@ -15,6 +15,7 @@ import { getAllClubs } from '../../src/api/club.api';
 import { widthPercentageToDP as wp, heightPercentageToDP as hp } from 'react-native-responsive-screen';
 import { MotiView, AnimatePresence } from 'moti';
 import { Easing } from 'react-native-reanimated';
+import * as ImagePicker from 'expo-image-picker';
 
 
 const THEME_ACCENT = '#CCF900';
@@ -86,6 +87,23 @@ export default function ClubHomeScreen() {
     const [showTimePicker, setShowTimePicker] = useState(false);
     const [eventTime, setEventTime] = useState(new Date());
     const [emailModalVisible, setEmailModalVisible] = useState(false);
+    const [selectedImage, setSelectedImage] = useState<string | null>(null);
+
+    const pickImage = async () => {
+        const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+        if (status !== 'granted') {
+            Alert.alert('Permission Denied', 'We need gallery access to upload an event image.');
+            return;
+        }
+        const result = await ImagePicker.launchImageLibraryAsync({
+            mediaTypes: ['images'],
+            allowsEditing: false,
+            quality: 0.8,
+        });
+        if (!result.canceled && result.assets.length > 0) {
+            setSelectedImage(result.assets[0].uri);
+        }
+    };
 
     useFocusEffect(useCallback(() => { loadData(); }, []));
 
@@ -112,39 +130,46 @@ export default function ClubHomeScreen() {
     };
 
     const handlePublishEvent = async () => {
-        const { title, location, description, timeDisplay } = eventForm;
+        const { title, location, description, timeDisplay, badge, color } = eventForm;
         if (!title || !location || !description || !timeDisplay) {
             Alert.alert("Error", "All fields are required.");
             return;
         }
         setIsSubmitting(true);
         try {
-            await createEventApi({
-                ...eventForm,
-                clubId: adminClub?.clubId || 1, // Fallback if no club is fully linked yet
-                icon: adminClub?.icon || '📅',
-                date: eventDate.toISOString(),
-            });
+            const formData = new FormData();
+            formData.append('title', title);
+            formData.append('location', location);
+            formData.append('description', description);
+            formData.append('timeDisplay', timeDisplay);
+            formData.append('badge', badge);
+            formData.append('color', color);
+            formData.append('clubId', String(adminClub?.clubId || 1));
+            formData.append('icon', adminClub?.icon || '📅');
+            formData.append('date', eventDate.toISOString());
+
+            if (selectedImage) {
+                const filename = selectedImage.split('/').pop() || 'image.jpg';
+                const match = /\.(\w+)$/.exec(filename);
+                const type = match ? `image/${match[1]}` : `image`;
+                formData.append('image', { uri: selectedImage, name: filename, type } as any);
+            }
+
+            await createEventApi(formData as any);
             Alert.alert("Success", "Event published!");
             setModalVisible(false);
+            setSelectedImage(null);
+            setEventForm({ title: '', location: '', timeDisplay: '', description: '', badge: 'UPCOMING', color: '#EAB308' });
             loadData();
-        } catch (err) { Alert.alert("Error", "Failed to publish event"); }
+        } catch (err) { 
+            console.log("Failed to publish:", err);
+            Alert.alert("Error", "Failed to publish event"); 
+        }
         finally { setIsSubmitting(false); }
     };
 
-    // On the club portal side, arguably all events can just sort chronologically, or same as user side
-    const sortEventsByFollowing = (eventsList: any[]) => {
-        return [...eventsList].sort((a, b) => {
-            const aFollowed = user.following.includes(a.clubId);
-            const bFollowed = user.following.includes(b.clubId);
-            if (aFollowed && !bFollowed) return -1;
-            if (!aFollowed && bFollowed) return 1;
-            return 0;
-        });
-    };
-
-    const liveEvents = useMemo(() => sortEventsByFollowing(events.filter((e: any) => e.badge === 'LIVE')), [user.following, events]);
-    const upcomingEvents = useMemo(() => sortEventsByFollowing(events.filter((e: any) => e.badge === 'UPCOMING')), [user.following, events]);
+    const liveEvents = useMemo(() => events.filter((e: any) => e.badge === 'LIVE'), [events]);
+    const upcomingEvents = useMemo(() => events.filter((e: any) => e.badge === 'UPCOMING'), [events]);
 
     if (loading && events.length === 0) {
         return (
@@ -176,22 +201,26 @@ export default function ClubHomeScreen() {
                     <SectionHeader title="Happening Now" icon={PlayCircle} color={THEME_ACCENT} />
                     <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: wp('6%') }} style={{ marginBottom: hp('5%') }}>
                         {liveEvents.map((event: any) => {
-                            const isFollowed = user.following.includes(event.clubId);
                             const cardColor = event.color || THEME_ACCENT;
                             return (
-                                <TouchableOpacity key={event._id} activeOpacity={0.8} style={{ width: wp('55%'), backgroundColor: '#121212', borderRadius: 32, marginRight: wp('4%'), padding: wp('5%'), overflow: 'hidden', borderWidth: isFollowed ? 1 : 0, borderColor: isFollowed ? getRgba(cardColor, 0.4) : 'transparent' }}>
-                                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: hp('2%') }}>
-                                        <View style={{ paddingHorizontal: wp('3%'), paddingVertical: hp('0.5%'), borderRadius: 999, borderWidth: 1, backgroundColor: getRgba(cardColor, 0.2), borderColor: getRgba(cardColor, 0.3) }}>
-                                            <Text style={{ fontSize: hp('1.2%'), fontWeight: '900', letterSpacing: 2, color: cardColor }}>LIVE</Text>
+                                <TouchableOpacity key={event._id} activeOpacity={0.8} style={{ width: wp('55%'), backgroundColor: '#121212', borderRadius: 32, marginRight: wp('4%'), overflow: 'hidden' }}>
+                                    {event.imageUrl && (
+                                        <Image style={{ width: '100%', height: hp('14%') }} source={{ uri: event.imageUrl }} resizeMode="cover" />
+                                    )}
+                                    <View style={{ padding: wp('5%') }}>
+                                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: hp('2%') }}>
+                                            <View style={{ paddingHorizontal: wp('3%'), paddingVertical: hp('0.5%'), borderRadius: 999, borderWidth: 1, backgroundColor: getRgba(cardColor, 0.2), borderColor: getRgba(cardColor, 0.3) }}>
+                                                <Text style={{ fontSize: hp('1.2%'), fontWeight: '900', letterSpacing: 2, color: cardColor }}>LIVE</Text>
+                                            </View>
+                                            <Text style={{ fontSize: hp('3.5%') }}>{event.icon}</Text>
                                         </View>
-                                        <Text style={{ fontSize: hp('3.5%') }}>{event.icon}</Text>
-                                    </View>
-                                    <View>
-                                        <Text style={{ color: '#737373', fontSize: hp('1.2%'), fontWeight: 'bold', letterSpacing: 2, textTransform: 'uppercase' }}>{event.clubName}</Text>
-                                        <Text style={{ color: 'white', fontSize: hp('2.8%'), fontWeight: '900' }} numberOfLines={2}>{event.title}</Text>
-                                        <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: hp('0.5%') }}>
-                                            <MapPin size={hp('1.5%')} color="#666" />
-                                            <Text style={{ color: '#A3A3A3', fontSize: hp('1.4%'), marginLeft: wp('1%') }}>{event.location}</Text>
+                                        <View>
+                                            <Text style={{ color: '#737373', fontSize: hp('1.2%'), fontWeight: 'bold', letterSpacing: 2, textTransform: 'uppercase' }}>{event.clubName}</Text>
+                                            <Text style={{ color: 'white', fontSize: hp('2.8%'), fontWeight: '900' }} numberOfLines={2}>{event.title}</Text>
+                                            <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: hp('0.5%') }}>
+                                                <MapPin size={hp('1.5%')} color="#666" />
+                                                <Text style={{ color: '#A3A3A3', fontSize: hp('1.4%'), marginLeft: wp('1%') }}>{event.location}</Text>
+                                            </View>
                                         </View>
                                     </View>
                                 </TouchableOpacity>
@@ -202,21 +231,24 @@ export default function ClubHomeScreen() {
                     <SectionHeader title="Coming Up" icon={Calendar} color="#A0A0A0" />
                     <View style={{ paddingHorizontal: wp('6%'), gap: hp('1.5%') }}>
                         {upcomingEvents.map((event: any) => {
-                            const isFollowed = user.following.includes(event.clubId);
                             const cardColor = event.color || '#fff';
                             const dateObj = new Date(event.date);
                             return (
-                                <TouchableOpacity key={event._id} activeOpacity={0.7} style={{ width: '100%', backgroundColor: '#121212', borderRadius: 24, padding: wp('4%'), flexDirection: 'row', alignItems: 'center', borderWidth: isFollowed ? 1 : 0, borderColor: isFollowed ? getRgba(cardColor, 0.3) : 'transparent' }}>
-                                    <View style={{ width: wp('16%'), height: wp('16%'), borderRadius: 16, alignItems: 'center', justifyContent: 'center', marginRight: wp('4%'), backgroundColor: isFollowed ? getRgba(cardColor, 0.1) : '#1A1A1A' }}>
-                                        <Text style={{ fontSize: hp('1.2%'), fontWeight: '900', color: isFollowed ? cardColor : '#737373' }}>{dateObj.toLocaleString('default', { month: 'short' }).toUpperCase()}</Text>
+                                <TouchableOpacity key={event._id} activeOpacity={0.7} style={{ width: '100%', backgroundColor: '#121212', borderRadius: 24, padding: wp('4%'), flexDirection: 'row', alignItems: 'center' }}>
+                                    <View style={{ width: wp('16%'), height: wp('16%'), borderRadius: 16, alignItems: 'center', justifyContent: 'center', marginRight: wp('4%'), backgroundColor: '#1A1A1A' }}>
+                                        <Text style={{ fontSize: hp('1.2%'), fontWeight: '900', color: '#737373' }}>{dateObj.toLocaleString('default', { month: 'short' }).toUpperCase()}</Text>
                                         <Text style={{ color: 'white', fontSize: hp('2.5%'), fontWeight: '900' }}>{dateObj.getDate()}</Text>
                                     </View>
-                                    <View style={{ flex: 1 }}>
+                                    <View style={{ flex: 1, marginRight: wp('2%') }}>
                                         <Text style={{ color: 'white', fontSize: hp('2%'), fontWeight: 'bold' }}>{event.title}</Text>
                                         <Text style={{ color: THEME_ACCENT, fontSize: hp('1.4%'), fontWeight: 'bold' }}>{event.clubName}</Text>
                                         <Text style={{ color: '#52525B', fontSize: hp('1.4%') }}>{event.timeDisplay} @ {event.location}</Text>
                                     </View>
-                                    <Text style={{ fontSize: hp('2.2%') }}>{event.icon}</Text>
+                                    {event.imageUrl ? (
+                                        <Image source={{ uri: event.imageUrl }} style={{ width: wp('12%'), height: wp('12%'), borderRadius: 12, backgroundColor: '#1A1A1A' }} />
+                                    ) : (
+                                        <Text style={{ fontSize: hp('2.2%') }}>{event.icon}</Text>
+                                    )}
                                 </TouchableOpacity>
                             )
                         })}
@@ -315,6 +347,50 @@ export default function ClubHomeScreen() {
                         />
 
                         <Label text="Location" /><CustomInput placeholder="Room/Venue" onChangeText={(t) => setEventForm({ ...eventForm, location: t })} />
+
+                        {/* Upload Image */}
+                        <Label text="Event Poster" />
+                        <TouchableOpacity
+                            activeOpacity={0.8}
+                            onPress={pickImage}
+                            style={{
+                                marginTop: hp('1%'),
+                                flexDirection: 'row',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                gap: wp('3%'),
+                                paddingVertical: hp('1.8%'),
+                                paddingHorizontal: wp('6%'),
+                                borderRadius: 999,
+                                backgroundColor: '#161618',
+                                borderWidth: 1.5,
+                                borderColor: 'rgba(204, 249, 0, 0.25)',
+                                alignSelf: 'center',
+                            }}
+                        >
+                            <ImageUp color={THEME_ACCENT} size={hp('2.5%')} strokeWidth={2} />
+                            <Text style={{ color: 'white', fontSize: hp('1.7%'), fontWeight: '800', letterSpacing: 0.5 }}>
+                                {selectedImage ? 'Change Image' : 'Select File'}
+                            </Text>
+                        </TouchableOpacity>
+
+                        {selectedImage && (
+                            <View style={{ marginTop: hp('1.5%'), alignItems: 'center' }}>
+                                <View style={{ borderRadius: 16, overflow: 'hidden', borderWidth: 1, borderColor: '#27272A', backgroundColor: '#0A0A0A' }}>
+                                    <Image
+                                        source={{ uri: selectedImage }}
+                                        style={{ width: wp('76%'), height: undefined, aspectRatio: 1, maxHeight: hp('25%'), borderRadius: 16 }}
+                                        resizeMode="contain"
+                                    />
+                                </View>
+                                <TouchableOpacity
+                                    onPress={() => setSelectedImage(null)}
+                                    style={{ marginTop: hp('0.8%') }}
+                                >
+                                    <Text style={{ color: '#EF4444', fontSize: hp('1.3%'), fontWeight: '700' }}>Remove Image</Text>
+                                </TouchableOpacity>
+                            </View>
+                        )}
 
                         <TouchableOpacity onPress={handlePublishEvent} disabled={isSubmitting} style={{ backgroundColor: THEME_ACCENT, padding: hp('2%'), borderRadius: 15, alignItems: 'center', marginTop: hp('3%') }}>
                             {isSubmitting ? <ActivityIndicator color="black" /> : <Text style={{ color: 'black', fontWeight: '900' }}>PUBLISH EVENT</Text>}
