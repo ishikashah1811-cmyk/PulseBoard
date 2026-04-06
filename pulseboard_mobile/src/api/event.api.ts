@@ -1,5 +1,15 @@
 import api from './client';
 
+export const getPersonalEvents = async () => {
+  try {
+    const response = await api.get('/personal-events');
+    return response.data.events || [];
+  } catch (error) {
+    console.error('Error fetching personal events:', error);
+    return [];
+  }
+};
+
 /**
  * Get the global feed of all LIVE and UPCOMING events
  */
@@ -30,9 +40,13 @@ export const fetchEventsByClub = async (clubId: number) => {
  * Create a new event in MongoDB
  * Matches your POST /api/events route
  */
-export const createEventApi = async (eventData: any) => {
+export const createEventApi = async (formData: FormData) => {
   try {
-    const response = await api.post('/events', eventData);
+    const response = await api.post('/events', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
     return response.data;
   } catch (error) {
     console.error('Error creating event:', error);
