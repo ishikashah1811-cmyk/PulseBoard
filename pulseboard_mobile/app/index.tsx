@@ -3,20 +3,23 @@ import { View, Text, TouchableOpacity, SafeAreaView, StatusBar } from 'react-nat
 import { router } from 'expo-router';
 import { ArrowRight, Target } from 'lucide-react-native';
 import { widthPercentageToDP as wp, heightPercentageToDP as hp } from 'react-native-responsive-screen';
+import { useTheme } from '../src/context/ThemeContext';
 
 // --- Theme Constants ---
 const LN_VOLT = '#CCF900'; 
 
 export default function WelcomeScreen() {
+  const { isDark } = useTheme();
   return (
     // OUTER FRAME: Pitch Black Background
-    <View className="flex-1 bg-black justify-center items-center" style={{ padding: wp('2%') }}>
+    <View className="flex-1 bg-white dark:bg-black justify-center items-center" style={{ padding: wp('2%') }}>
       
       {/* HIDE STATUS BAR */}
       <StatusBar hidden={true} />
+      <StatusBar barStyle={isDark ? "light-content" : "dark-content"} />
 
       {/* INNER FRAME: The "Card" */}
-      <View className="w-full h-full bg-[#050505] rounded-[20px] border border-neutral-800 relative overflow-hidden">
+      <View className="w-full h-full bg-neutral-100 dark:bg-[#050505] rounded-[20px] border border-neutral-200 dark:border-neutral-800 relative overflow-hidden">
         
         {/* --- DECORATION: Corner Accents (Scaled) --- */}
         {/* Top Left */}
@@ -69,7 +72,7 @@ export default function WelcomeScreen() {
                </Text>
                {/* Main Logo */}
                <Text 
-                  className="font-black italic tracking-tighter text-white" 
+                  className="font-black italic tracking-tighter text-black dark:text-white" 
                   style={{ 
                       fontSize: hp('15%'), // Matches shadow size
                       transform: [{ skewX: '-12deg' }] 
@@ -106,7 +109,7 @@ export default function WelcomeScreen() {
                Mission Status
              </Text>
              <Text 
-                className="text-white font-black italic uppercase"
+                className="text-black dark:text-white font-black italic uppercase"
                 style={{ 
                     fontSize: hp('6%'), 
                     lineHeight: hp('6%'), // Tighter line height for impact
